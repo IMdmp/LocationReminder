@@ -20,16 +20,24 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.Task
 import com.google.android.material.snackbar.Snackbar
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
+import com.udacity.project4.utils.PermissionManager
+import com.udacity.project4.utils.PermissionManager.Companion.checkDeviceLocationSettingsAndStartGeofence
+import com.udacity.project4.utils.PermissionManager.Companion.foregroundAndBackgroundLocationPermissionApproved
+import com.udacity.project4.utils.PermissionManager.Companion.requestForegroundAndBackgroundLocationPermissions
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
+import timber.log.Timber
 
-class SelectLocationFragment : BaseFragment() {
+class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
+    OnCompleteListener<LocationSettingsResponse> {
 
     //Use Koin to get the view model of the SaveReminder
     override val _viewModel: SaveReminderViewModel by inject()
@@ -47,9 +55,10 @@ class SelectLocationFragment : BaseFragment() {
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
 
-//        TODO: add the map setup implementation
-//        TODO: zoom to the user location after taking his permission
-//        TODO: add style to the map
+
+        val mapFragment = childFragmentManager
+            .findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
 //        TODO: put a marker to location that the user selected
 
 
@@ -58,6 +67,16 @@ class SelectLocationFragment : BaseFragment() {
 
         return binding.root
     }
+
+    private fun checkPermissionsAndZoom() {
+        if (foregroundAndBackgroundLocationPermissionApproved(requireContext())) {
+            checkDeviceLocationSettingsAndStartGeofence(activity = requireActivity(),
+            onCompleteListener = this)
+        } else {
+            requestForegroundAndBackgroundLocationPermissions(requireActivity())
+        }
+    }
+
 
     private fun onLocationSelected() {
         //        TODO: When the user confirms on the selected location,
@@ -85,6 +104,27 @@ class SelectLocationFragment : BaseFragment() {
             true
         }
         else -> super.onOptionsItemSelected(item)
+    }
+
+    override fun onMapReady(googleMap: GoogleMap) {
+        googleMap.addMarker(
+            MarkerOptions()
+                .position(LatLng(0.0, 0.0))
+                .title("Marker")
+        )
+
+        checkPermissionsAndZoom()
+//        TODO: zoom to the user location after taking his permission
+//        TODO: add style to the map
+
+    }
+
+    override fun onComplete(p0: Task<LocationSettingsResponse>) {
+        zoomToPosition()
+    }
+
+    private fun zoomToPosition() {
+        Timber.d("lets zoom to position")
     }
 
 
