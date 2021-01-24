@@ -21,6 +21,7 @@ class ReminderDescriptionActivity : AppCompatActivity() {
         fun newIntent(context: Context, reminderDataItem: ReminderDataItem): Intent {
             val intent = Intent(context, ReminderDescriptionActivity::class.java)
             intent.putExtra(EXTRA_ReminderDataItem, reminderDataItem)
+            
             return intent
         }
     }
