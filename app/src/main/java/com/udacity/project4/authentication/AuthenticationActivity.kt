@@ -8,10 +8,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import com.firebase.ui.auth.AuthUI
 import com.firebase.ui.auth.IdpResponse
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.firebase.auth.FirebaseAuth
 import com.udacity.project4.R
 import com.udacity.project4.databinding.ActivityAuthenticationBinding
 import com.udacity.project4.locationreminders.RemindersActivity
+import timber.log.Timber
+
 
 /**
  * This class should be the starting point of the app, It asks the users to sign in / register, and redirects the
@@ -28,8 +31,17 @@ class AuthenticationActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val binding: ActivityAuthenticationBinding = DataBindingUtil.setContentView(
-            this, R.layout.activity_authentication)
+            this, R.layout.activity_authentication
+        )
+        //auto sign in
+        val auth = FirebaseAuth.getInstance();
 
+        if (auth.currentUser != null) {
+            Timber.d("already signed in. navigate to reminders.")
+            // User is signed in (getCurrentUser() will be null if not signed in)
+            navigateToReminders()
+
+        }
         binding.btnLogin.setOnClickListener {
             launchSignInFlow()
         }
@@ -62,15 +74,22 @@ class AuthenticationActivity : AppCompatActivity() {
             val response = IdpResponse.fromResultIntent(data)
             if (resultCode == Activity.RESULT_OK) {
                 // User successfully signed in
-                Log.i(TAG, "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}!")
-                startActivity(Intent(this,RemindersActivity::class.java))
+              Timber.i(
+                    "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}!"
+                )
+                navigateToReminders()
 
             } else {
                 // Sign in failed. If response is null the user canceled the
                 // sign-in flow using the back button. Otherwise check
                 // response.getError().getErrorCode() and handle the error.
-                Log.i(TAG, "Sign in unsuccessful ${response?.error?.errorCode}")
+               Timber.i("Sign in unsuccessful ${response?.error?.errorCode}")
             }
         }
+    }
+
+    private fun navigateToReminders() {
+        startActivity(Intent(this, RemindersActivity::class.java))
+        finish()
     }
 }

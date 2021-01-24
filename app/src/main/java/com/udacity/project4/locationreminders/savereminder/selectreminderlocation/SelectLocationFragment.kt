@@ -10,6 +10,8 @@ import android.view.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.Observer
+import androidx.navigation.fragment.findNavController
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -22,9 +24,6 @@ import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
-import com.udacity.project4.utils.PermissionManager.Companion.checkDeviceLocationSettingsAndStartGeofence
-import com.udacity.project4.utils.PermissionManager.Companion.foregroundAndBackgroundLocationPermissionApproved
-import com.udacity.project4.utils.PermissionManager.Companion.requestForegroundAndBackgroundLocationPermissions
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
 import timber.log.Timber
@@ -39,7 +38,9 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
 
     }
 
-    private lateinit var lastKnownLocation: Location
+    private var selectedMarker: Marker?=null
+    private var selectedTitle: String?=null
+    private var lastKnownLocation: Location? = null
     private lateinit var mFusedLocationProviderClient: FusedLocationProviderClient
     private var locationPermissionGranted: Boolean = false
     private lateinit var map: GoogleMap
@@ -47,7 +48,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
     //Use Koin to get the view model of the SaveReminder
     override val _viewModel: SaveReminderViewModel by inject()
     private lateinit var binding: FragmentSelectLocationBinding
-
+    private var selectedLatLng:LatLng?=null
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
@@ -59,7 +60,8 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
 
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireActivity());
+        mFusedLocationProviderClient =
+            LocationServices.getFusedLocationProviderClient(requireActivity());
 
 
         val mapFragment = childFragmentManager
@@ -67,31 +69,29 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
         mapFragment.getMapAsync(this)
 
         getLocationPermission()
-//        TODO: put a marker to location that the user selected
-
-
-//        TODO: call this function after the user confirms on the selected location
-        onLocationSelected()
         getDeviceLocation()
+
+        _viewModel.mapSelectedEvent.observe(viewLifecycleOwner, Observer { isSelected ->
+            binding.btnConfirm.isEnabled = isSelected
+        })
+
+        binding.btnConfirm.setOnClickListener {
+            selectedLatLng?.let {
+                onLocationSelected(it)
+            }
+        }
+
         return binding.root
     }
 
-    private fun checkPermissionsAndZoom() {
-        if (foregroundAndBackgroundLocationPermissionApproved(requireContext())) {
-            checkDeviceLocationSettingsAndStartGeofence(
-                activity = requireActivity(),
-                onCompleteListener = this
-            )
-        } else {
-            requestForegroundAndBackgroundLocationPermissions(requireActivity())
-        }
-    }
+    private fun onLocationSelected(latLng: LatLng) {
 
-
-    private fun onLocationSelected() {
         //        TODO: When the user confirms on the selected location,
         //         send back the selected location details to the view model
         //         and navigate back to the previous fragment to save the reminder and add the geofence
+
+        _viewModel.updateLocation(latLng,selectedTitle)
+        findNavController().navigate(R.id.action_selectLocationFragment_to_saveReminderFragment)
     }
 
 
@@ -122,15 +122,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
 
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
-        googleMap.addMarker(
-            MarkerOptions()
-                .position(LatLng(0.0, 0.0))
-                .title("Marker")
-        )
 
-        checkPermissionsAndZoom()
-//        TODO: zoom to the user location after taking his permission
 //        TODO: add style to the map
+        setMapLongClick(map)
+        setPoiClick(map)
 
     }
 
@@ -140,6 +135,33 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
         }
     }
 
+    private fun setMapLongClick(map: GoogleMap) {
+        //        TODO: put a marker to location that the user selected
+        map.setOnMapLongClickListener { latLng ->
+            selectedMarker?.remove()
+            selectedMarker = map.addMarker(
+                MarkerOptions()
+                    .position(latLng)
+            )
+            _viewModel.mapSelected()
+            selectedLatLng = latLng
+        }
+    }
+    private fun setPoiClick(map: GoogleMap) {
+        selectedMarker?.remove()
+
+        map.setOnPoiClickListener { poi ->
+            selectedMarker = map.addMarker(
+                MarkerOptions()
+                    .position(poi.latLng)
+                    .title(poi.name)
+            )
+            selectedMarker!!.showInfoWindow()
+            _viewModel.mapSelected()
+            selectedLatLng = poi.latLng
+            selectedTitle = poi.name
+        }
+    }
     private fun zoomToPosition(result: LocationSettingsResponse) {
     }
 
@@ -164,6 +186,26 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
         }
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        locationPermissionGranted = false
+        when (requestCode) {
+            PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION -> {
+
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    locationPermissionGranted = true
+                }
+            }
+        }
+        getDeviceLocation()
+    }
+
     private fun getDeviceLocation() {
         /*
          * Get the best and most recent location of the device, which may be null in rare
@@ -175,20 +217,22 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
                 locationResult.addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         // Set the map's camera position to the current location of the device.
-                        lastKnownLocation = task.result!!
-                        if (lastKnownLocation != null) {
-                            map?.moveCamera(
+                        lastKnownLocation = task.result
+                        Timber.d("last known location? $lastKnownLocation")
+                        lastKnownLocation?.let {
+                            map.moveCamera(
                                 CameraUpdateFactory.newLatLngZoom(
                                     LatLng(
-                                        lastKnownLocation.latitude,
-                                        lastKnownLocation.longitude
+                                        it.latitude,
+                                        it.longitude
                                     ), DEFAULT_ZOOM.toFloat()
                                 )
-                            )
+                            );
+
                         }
                     } else {
+                        Timber.e("Exception:${task.exception}")
                         Timber.d("Current location is null. Using defaults.")
-                        Timber.e("Exception: %s", task.exception)
                     }
                 }
             }
