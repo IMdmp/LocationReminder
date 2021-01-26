@@ -36,6 +36,7 @@ class SaveReminderFragment : BaseFragment() {
     override val _viewModel: SaveReminderViewModel by inject()
     private lateinit var binding: FragmentSaveReminderBinding
     private lateinit var geofencingClient: GeofencingClient
+
     private val geofencePendingIntent: PendingIntent by lazy {
         val intent = Intent(requireContext(), GeofenceBroadcastReceiver::class.java)
         intent.action = ACTION_GEOFENCE_EVENT
