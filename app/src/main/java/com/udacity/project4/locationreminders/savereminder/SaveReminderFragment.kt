@@ -72,13 +72,9 @@ class SaveReminderFragment : BaseFragment() {
         binding.saveReminder.setOnClickListener {
             val title = _viewModel.reminderTitle.value
             val description = _viewModel.reminderDescription.value
-            val location = _viewModel.reminderSelectedLocationStr.value
+            val location = _viewModel.reminderSelectedLocationStr.value!!
             val latitude = _viewModel.latitude.value!!
             val longitude = _viewModel.longitude.value!!
-
-//            TODO: use the user entered reminder details to:
-//             1) add a geofencing request
-//             2) save the reminder to the local db
 
             //pending geofence code.
             val geofence = Geofence.Builder()
@@ -87,7 +83,7 @@ class SaveReminderFragment : BaseFragment() {
                     longitude,
                     GEOFENCE_RADIUS_IN_METERS
                 )
-                .setRequestId(location?:"loc")
+                .setRequestId(location)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
                 .setExpirationDuration(GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                 .build()
@@ -101,7 +97,16 @@ class SaveReminderFragment : BaseFragment() {
                 addOnSuccessListener {
                     Timber.d("Add Geofence ${geofence.requestId}")
 //                    viewModel.geofenceActivated()
-                    _viewModel.validateAndSaveReminder(ReminderDataItem(title,description,location,latitude,longitude))
+                    _viewModel.validateAndSaveReminder(
+                        ReminderDataItem(
+                            title,
+                            description,
+                            location,
+                            latitude,
+                            longitude,
+                            location
+                        )
+                    )
                     findNavController().navigate(R.id.action_saveReminderFragment_to_reminderListFragment)
                 }
 

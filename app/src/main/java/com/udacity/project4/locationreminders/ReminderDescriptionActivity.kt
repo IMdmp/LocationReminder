@@ -33,6 +33,14 @@ class ReminderDescriptionActivity : AppCompatActivity() {
             this,
             R.layout.activity_reminder_description
         )
-//        TODO: Add the implementation of the reminder details
+
+        val reminderDetail = getReminderDetail()
+
+        binding.tvDescription.text = reminderDetail.description
+        binding.tvTitle.text = reminderDetail.title
+    }
+
+    private fun getReminderDetail(): ReminderDataItem {
+        return intent.getSerializableExtra(EXTRA_ReminderDataItem) as ReminderDataItem
     }
 }
