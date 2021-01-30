@@ -12,8 +12,13 @@ import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import com.udacity.project4.R
+import com.udacity.project4.locationreminders.FakeRemindersLocalRepository
+import com.udacity.project4.locationreminders.data.dto.ReminderDTO
+import com.udacity.project4.locationreminders.data.local.RemindersLocalRepositoryTest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.mock
@@ -29,5 +34,23 @@ class ReminderListFragmentTest {
 //    TODO: test the displayed data on the UI.
 //    TODO: add testing for the error messages.
 
+    private lateinit var remindersLocalRepositoryTest: RemindersLocalRepositoryTest
+    private lateinit var sampleRepo: FakeRemindersLocalRepository
 
+    @Before
+    fun setUpRepository() {
+        sampleRepo = FakeRemindersLocalRepository()
+    }
+
+    fun getActiveTasksTest()= runBlocking {
+        // GIVEN - Add active task to the DB
+        val sampleData = ReminderDTO("title", "desc", "location", 1.0, 2.0)
+        sampleRepo.saveReminder(sampleData)
+
+
+        // WHEN - Details fragment launched to display task
+        val bundle = ReminderListFragment()
+        launchFragmentInContainer<ReminderListFragment>( themeResId = R.style.AppTheme)
+
+    }
 }
