@@ -1,6 +1,5 @@
 package com.udacity.project4.locationreminders.data.local
 
-import FakeDataSource
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -8,16 +7,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
+import com.udacity.project4.locationreminders.data.dto.succeeded
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
-import org.hamcrest.CoreMatchers.`is`
-import org.hamcrest.CoreMatchers.instanceOf
-import org.hamcrest.MatcherAssert.assertThat
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.hamcrest.CoreMatchers
+import org.junit.*
 import org.junit.runner.RunWith
 
 @ExperimentalCoroutinesApi
@@ -27,20 +22,50 @@ import org.junit.runner.RunWith
 class RemindersLocalRepositoryTest {
 
 
-    val reminder1 = ReminderDTO("title", "desc", "location", 1.0, 2.0)
-    val reminder2= ReminderDTO("title2", "desc2", "location2", 1.0, 2.0)
-    val reminder3 = ReminderDTO("title3", "desc3", "location3", 1.0, 2.0)
+    private lateinit var reminderLocalRepository: RemindersLocalRepository
+    private lateinit var database: RemindersDatabase
+
+    // Executes each task synchronously using Architecture Components.
+    @get:Rule
+    var instantExecutorRule = InstantTaskExecutorRule()
 
 
-    private val remoteReminders = listOf<ReminderDTO>(reminder1,reminder2)
-    private val localRemidners = listOf<ReminderDTO>(reminder3)
+    @Before
+    fun setup(){
+        // using an in-memory database for testing, since it doesn't survive killing the process
+        database = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            RemindersDatabase::class.java
+        )
+            .allowMainThreadQueries()
+            .build()
 
-    private lateinit var tasksRemoteDataSource:FakeDataSource
-    private lateinit var tasksLocalDataSource: FakeDataSource
+        reminderLocalRepository =
+            RemindersLocalRepository(
+                database.reminderDao(),
+                Dispatchers.Main
+            )
+    }
 
 
-    
-//
-//    TODO: Add testing implementation to the RemindersLocalRepository.kt
 
+    @After
+    fun cleanUp() {
+        database.close()
+    }
+
+
+    @Test
+    fun saveReminder_retrieveReminder() = runBlocking {
+        val reminderDto = ReminderDTO("title", "desc", "location", 1.0, 2.0)
+        reminderLocalRepository.saveReminder(reminderDto)
+
+        // WHEN  - Task retrieved by ID
+        val result = reminderLocalRepository.getReminder(reminderDto.id)
+
+        // THEN - Same task is returned
+        Assert.assertThat(result.succeeded, CoreMatchers.`is`(true))
+        result as Result.Success
+
+    }
 }
