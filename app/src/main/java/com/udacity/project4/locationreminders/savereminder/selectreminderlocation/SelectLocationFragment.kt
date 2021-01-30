@@ -29,6 +29,7 @@ import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
+import com.udacity.project4.utils.wrapEspressoIdlingResource
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 
@@ -72,8 +73,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        getLocationPermission()
-        getDeviceLocation()
+        wrapEspressoIdlingResource {
+            getLocationPermission()
+            getDeviceLocation()
+        }
 
         _viewModel.mapSelectedEvent.observe(viewLifecycleOwner, Observer { isSelected ->
             binding.btnConfirm.isEnabled = isSelected
@@ -81,7 +84,9 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
 
         binding.btnConfirm.setOnClickListener {
             selectedLatLng?.let {
-                onLocationSelected(it)
+                wrapEspressoIdlingResource {
+                    onLocationSelected(it)
+                }
             }
         }
 
@@ -130,8 +135,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
     }
 
     override fun onComplete(task: Task<LocationSettingsResponse>) {
-        task.result?.let {
-            zoomToPosition(it)
+        wrapEspressoIdlingResource {
+            task.result?.let {
+                zoomToPosition(it)
+            }
         }
     }
 

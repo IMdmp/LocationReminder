@@ -7,6 +7,9 @@ import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.IdlingRegistry
 import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.longClick
+import androidx.test.espresso.assertion.ViewAssertions
+import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
@@ -23,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
+import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.context.startKoin
@@ -101,13 +105,14 @@ class RemindersActivityTest :
         IdlingRegistry.getInstance().unregister(dataBindingIdlingResource)
     }
 
-
+    @Test
     fun createOneReminder() {
         // start up Tasks screen
         val activityScenario = ActivityScenario.launch(RemindersActivity::class.java)
         dataBindingIdlingResource.monitorActivity(activityScenario)
 
-
+        //todo: missing- check permissions.
+        //get location
         onView(withId(R.id.addReminderFAB)).perform(click())
         onView(withId(R.id.reminderTitle)).perform(
             ViewActions.typeText("TITLE1"),
@@ -119,14 +124,15 @@ class RemindersActivityTest :
         )
         onView(withId(R.id.selectLocation)).perform(click())
 
-        onView(withId(R.id.map)).perform(click())
-        // Add a short delay to ensure the click on the map
-        // is actually performed.
-        runBlocking {
-            delay(500)
-        }
+        onView(withId(R.id.map)).perform(longClick())
 
+        onView(withId(R.id.btnConfirm)).perform(click())
 
+        onView(withId(R.id.saveReminder)).perform(click())
 
+        //verify new item
+        onView(ViewMatchers.withText("TITLE1")).check(ViewAssertions.matches(ViewMatchers.withText("TITLE1")))
+
+        activityScenario.close()
     }
 }

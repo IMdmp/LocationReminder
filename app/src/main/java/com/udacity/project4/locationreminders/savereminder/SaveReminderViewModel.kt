@@ -96,6 +96,6 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     ) {
         latitude.value = latLng.latitude
         longitude.value = latLng.longitude
-        reminderSelectedLocationStr.value = selectedLatLng?:""
+        reminderSelectedLocationStr.value = selectedLatLng?:"sample"
     }
 }
