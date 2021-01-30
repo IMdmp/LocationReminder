@@ -51,7 +51,7 @@ class RemindersDaoTest {
 
         val reminder = ReminderDTO("title", "desc", "location", 1.0, 2.0)
 
-        //save reminder and getreminder by id
+        //save reminder and get reminder by id
         database.reminderDao().saveReminder(reminder)
 
         // WHEN - Get the task by id from the database

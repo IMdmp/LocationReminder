@@ -38,6 +38,16 @@ android {
     buildFeatures {
         dataBinding true
     }
+
+    android.sourceSets {
+        test {
+            java.srcDirs += "$projectDir/src/testShared"
+        }
+
+        androidTest {
+            java.srcDirs += "$projectDir/src/testShared"
+        }
+    }
 }
 
 dependencies {
