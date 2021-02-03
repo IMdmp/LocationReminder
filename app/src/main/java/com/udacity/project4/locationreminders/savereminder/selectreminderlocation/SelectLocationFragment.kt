@@ -2,6 +2,7 @@ package com.udacity.project4.locationreminders.savereminder.selectreminderlocati
 
 
 import android.Manifest
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
@@ -12,9 +13,8 @@ import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.LocationSettingsResponse
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -26,6 +26,7 @@ import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
+import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
@@ -40,6 +41,8 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
     companion object {
         private const val PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1
         private const val DEFAULT_ZOOM = 15
+
+        private const val REQUEST_CHECK_SETTINGS =90
 
     }
 
@@ -75,7 +78,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
 
         wrapEspressoIdlingResource {
             getLocationPermission()
-            getDeviceLocation()
+            checkLocationSettings()
         }
 
         _viewModel.mapSelectedEvent.observe(viewLifecycleOwner, Observer { isSelected ->
@@ -93,10 +96,52 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
         return binding.root
     }
 
+    private fun checkLocationSettings() {
+        val locationRequest = LocationRequest.create().apply {
+            interval = 10000
+            fastestInterval = 5000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+        val builder = LocationSettingsRequest.Builder()
+            .addLocationRequest(locationRequest)
+
+        val client: SettingsClient = LocationServices.getSettingsClient(requireActivity())
+        val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
+
+        task.addOnSuccessListener { locationSettingsResponse ->
+            // All location settings are satisfied. The client can initialize
+            // location requests here.
+            // ...
+            getDeviceLocation()
+
+            Timber.d("done. ${locationSettingsResponse}")
+        }
+
+        task.addOnFailureListener{ exception->
+            if (exception is ResolvableApiException){
+                Timber.d("request denied.")
+                // Location settings are not satisfied, but this can be fixed
+                // by showing the user a dialog.
+                try {
+                    // Show the dialog by calling startResolutionForResult(),
+                    // and check the result in onActivityResult().
+                    exception.startResolutionForResult(requireActivity(),
+                        REQUEST_CHECK_SETTINGS)
+                } catch (sendEx: IntentSender.SendIntentException) {
+                    // Ignore the error.
+                }
+            }
+        }
+        task.addOnCanceledListener {
+            _viewModel.showErrorMessage.value="Request denied."
+
+        }
+    }
+
     private fun onLocationSelected(latLng: LatLng) {
 
         _viewModel.updateLocation(latLng,selectedTitle)
-        findNavController().navigate(R.id.action_selectLocationFragment_to_saveReminderFragment)
+        _viewModel.navigationCommand.value = NavigationCommand.Back
     }
 
 
@@ -220,7 +265,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback,
          */
         try {
             if (locationPermissionGranted) {
-                val locationResult = mFusedLocationProviderClient.lastLocation
+                    val locationResult = mFusedLocationProviderClient.lastLocation
                 locationResult.addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         // Set the map's camera position to the current location of the device.

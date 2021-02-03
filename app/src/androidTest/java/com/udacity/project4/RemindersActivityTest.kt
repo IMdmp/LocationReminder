@@ -13,6 +13,7 @@ import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import androidx.test.rule.GrantPermissionRule
 import com.udacity.project4.locationreminders.RemindersActivity
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.local.LocalDB
@@ -26,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -47,7 +49,9 @@ class RemindersActivityTest :
     // An Idling Resource that waits for Data Binding to have no pending bindings
     private val dataBindingIdlingResource = DataBindingIdlingResource()
 
-
+    @Rule
+    @JvmField
+    val grantPermissionRule: GrantPermissionRule = GrantPermissionRule.grant(android.Manifest.permission.ACCESS_FINE_LOCATION)
     /**
      * As we use Koin as a Service Locator Library to develop our code, we'll also use Koin to test our code.
      * at this step we will initialize Koin related code to be able to use it in out testing.

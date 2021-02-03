@@ -32,18 +32,12 @@ class SaveReminderFragment : BaseFragment() {
         internal const val ACTION_GEOFENCE_EVENT =
             "savereminder.action.ACTION_GEOFENCE_EVENT"
     }
+
     //Get the view model this time as a single to be shared with the another fragment
     override val _viewModel: SaveReminderViewModel by inject()
     private lateinit var binding: FragmentSaveReminderBinding
-    private lateinit var geofencingClient: GeofencingClient
 
-    private val geofencePendingIntent: PendingIntent by lazy {
-        val intent = Intent(requireContext(), GeofenceBroadcastReceiver::class.java)
-        intent.action = ACTION_GEOFENCE_EVENT
-        // Use FLAG_UPDATE_CURRENT so that you get the same pending intent back when calling
-        // addGeofences() and removeGeofences().
-        PendingIntent.getBroadcast(requireActivity(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -54,71 +48,38 @@ class SaveReminderFragment : BaseFragment() {
         setDisplayHomeAsUpEnabled(true)
 
         binding.viewModel = _viewModel
-        geofencingClient = LocationServices.getGeofencingClient(requireActivity())
 
         return binding.root
     }
 
-    @SuppressLint("MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.lifecycleOwner = this
         binding.selectLocation.setOnClickListener {
-            //            Navigate to another fragment to get the user location
-            _viewModel.navigationCommand.value =
-                NavigationCommand.To(SaveReminderFragmentDirections.actionSaveReminderFragmentToSelectLocationFragment())
+            //  Navigate to another fragment to get the user location
+            _viewModel.navigationCommand.value=
+            NavigationCommand.To(SaveReminderFragmentDirections.actionSaveReminderFragmentToSelectLocationFragment())
         }
 
         binding.saveReminder.setOnClickListener {
             val title = _viewModel.reminderTitle.value
             val description = _viewModel.reminderDescription.value
-            val location = _viewModel.reminderSelectedLocationStr.value!!
-            val latitude = _viewModel.latitude.value!!
-            val longitude = _viewModel.longitude.value!!
+            val location = _viewModel.reminderSelectedLocationStr.value
+            val latitude = _viewModel.latitude.value
+            val longitude = _viewModel.longitude.value
 
-            //pending geofence code.
-            val geofence = Geofence.Builder()
-                .setCircularRegion(
+            _viewModel.validateAndSaveReminder(
+                ReminderDataItem(
+                    title,
+                    description,
+                    location,
                     latitude,
-                    longitude,
-                    GEOFENCE_RADIUS_IN_METERS
+                    longitude
                 )
-                .setRequestId(location)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
-                .setExpirationDuration(GEOFENCE_EXPIRATION_IN_MILLISECONDS)
-                .build()
-
-            val geofencingRequest = GeofencingRequest.Builder()
-                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                .addGeofence(geofence)
-                .build()
-
-            geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)?.run {
-                addOnSuccessListener {
-                    Timber.d("Add Geofence ${geofence.requestId}")
-//                    viewModel.geofenceActivated()
-                    _viewModel.validateAndSaveReminder(
-                        ReminderDataItem(
-                            title,
-                            description,
-                            location,
-                            latitude,
-                            longitude,
-                            location
-                        )
-                    )
-                    findNavController().navigate(R.id.action_saveReminderFragment_to_reminderListFragment)
-                }
-
-                addOnFailureListener{
-                    Timber.e("Error adding geofence")
-
-                }
-            }
-
-
+            )
         }
     }
+
 
     override fun onDestroy() {
         super.onDestroy()

@@ -33,9 +33,11 @@ class ReminderListFragmentTest {
 //    TODO: test the navigation of the fragments.
 //    TODO: test the displayed data on the UI.
 //    TODO: add testing for the error messages.
-
+//navigation command can be used to ttest
     private lateinit var remindersLocalRepositoryTest: RemindersLocalRepositoryTest
     private lateinit var sampleRepo: FakeRemindersLocalRepository
+
+
 
     @Before
     fun setUpRepository() {
