@@ -33,21 +33,11 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     val longitude = MutableLiveData<Double>()
 
     val mapSelectedEvent = MutableLiveData<Boolean>()
-    private lateinit var geofencingClient: GeofencingClient
-
-    private val geofencePendingIntent: PendingIntent by lazy {
-        val intent = Intent(app, GeofenceBroadcastReceiver::class.java)
-        intent.action = SaveReminderFragment.ACTION_GEOFENCE_EVENT
-        // Use FLAG_UPDATE_CURRENT so that you get the same pending intent back when calling
-        // addGeofences() and removeGeofences().
-        PendingIntent.getBroadcast(app, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-    }
 
 
 
     init {
         mapSelectedEvent.value = false
-        geofencingClient = LocationServices.getGeofencingClient(app)
 
 
     }
@@ -68,7 +58,6 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
      */
     fun validateAndSaveReminder(reminderData: ReminderDataItem) {
         if (validateEnteredData(reminderData)) {
-            setGeoFence(reminderData)
             saveReminder(reminderData)
         }
     }
@@ -133,38 +122,5 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         latitude.value = latLng.latitude
         longitude.value = latLng.longitude
         reminderSelectedLocationStr.value = selectedLatLng?:latLng.toString()
-    }
-
-
-    @SuppressLint("MissingPermission")
-    private fun setGeoFence(reminderData:ReminderDataItem) {
-
-        //pending geofence code.
-        val geofence = Geofence.Builder()
-            .setCircularRegion(
-                reminderData.latitude!!,
-                reminderData.longitude!!,
-                GEOFENCE_RADIUS_IN_METERS
-            )
-            .setRequestId(reminderData.location)
-            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
-            .setExpirationDuration(GEOFENCE_EXPIRATION_IN_MILLISECONDS)
-            .build()
-
-        val geofencingRequest = GeofencingRequest.Builder()
-            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-            .addGeofence(geofence)
-            .build()
-
-        geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)?.run {
-            addOnSuccessListener {
-                Timber.d("Add Geofence ${geofence.requestId}")
-            }
-
-            addOnFailureListener {
-                Timber.e("Error adding geofence")
-
-            }
-        }
     }
 }
